@@ -2,8 +2,6 @@
 package main
 
 import (
-	"bytes"
-	"crypto/sha256"
 	"time"
 )
 
@@ -26,21 +24,21 @@ type Block struct {
 	Data []byte
 }
 
-func (block *Block) SetHash() {
-	tmp := [][]byte{
-		IntToByte(block.Version),
-		block.PrevBlockHash,
-		block.MerKelRoot,
-		IntToByte(block.TimeStamp),
-		IntToByte(block.Bits),
-		IntToByte(block.Nonce),
-		block.Data}
-	//2.参数为[][]byte类型，需要将block转成这个类型
-	data := bytes.Join(tmp, []byte{})
-	//1.参数为字节切片，需要构造这个切片
-	hash := sha256.Sum256(data)
-	block.Hash = hash[:]
-}
+// func (block *Block) SetHash() {
+// 	tmp := [][]byte{
+// 		IntToByte(block.Version),
+// 		block.PrevBlockHash,
+// 		block.MerKelRoot,
+// 		IntToByte(block.TimeStamp),
+// 		IntToByte(block.Bits),
+// 		IntToByte(block.Nonce),
+// 		block.Data}
+// 	//2.参数为[][]byte类型，需要将block转成这个类型
+// 	data := bytes.Join(tmp, []byte{})
+// 	//1.参数为字节切片，需要构造这个切片
+// 	hash := sha256.Sum256(data)
+// 	block.Hash = hash[:]
+// }
 func NewBlock(data string, prevBlockHash []byte) *Block {
 	block := Block{
 		Version:       1,
@@ -48,10 +46,13 @@ func NewBlock(data string, prevBlockHash []byte) *Block {
 		//Hash TODO
 		MerKelRoot: []byte{},
 		TimeStamp:  time.Now().Unix(),
-		Bits:       1,
-		Nonce:      1,
+		Bits:       targetBits,
+		Nonce:      0,
 		Data:       []byte(data)}
-	block.SetHash()
+	//block.SetHash()
+	pow := NewProofOfWork(&block)
+	block.Nonce, block.Hash = pow.Run()
+
 	return &block
 }
 
