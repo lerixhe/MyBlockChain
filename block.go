@@ -2,6 +2,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"time"
 )
 
@@ -39,6 +41,27 @@ type Block struct {
 // 	hash := sha256.Sum256(data)
 // 	block.Hash = hash[:]
 // }
+
+//将区块序列化为字节切片
+func (block *Block) Serialize() []byte {
+	var buffer bytes.Buffer
+	encoder := gob.NewEncoder(&buffer)
+	err := encoder.Encode(block)
+	CheckErr("encode err:", err)
+	return buffer.Bytes()
+}
+
+//反序列化为区块
+func DeSerialize(data []byte) *Block {
+	var block Block
+	if len(data) == 0 {
+		return nil
+	}
+	decoder := gob.NewDecoder(bytes.NewReader(data))
+	err := decoder.Decode(&block)
+	CheckErr("decode err", err)
+	return &block
+}
 func NewBlock(data string, prevBlockHash []byte) *Block {
 	block := Block{
 		Version:       1,
