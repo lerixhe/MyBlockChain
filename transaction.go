@@ -1,5 +1,11 @@
 package main
 
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/gob"
+)
+
 type Transaction struct {
 	//交易ID
 	TXID []byte
@@ -22,4 +28,12 @@ type TXOutput struct {
 	//锁定脚本，指定收款方的地址
 	ScriptPubKey string
 }
-func 
+
+func (ts *Transaction) SetTXID() {
+	var buffer bytes.Buffer
+	encoder := gob.NewEncoder(&buffer)
+	err := encoder.Encode(ts)
+	CheckErr("encode ts err:", err)
+	hash := sha256.Sum256(buffer.Bytes())
+	ts.TXID = hash[:]
+}

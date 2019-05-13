@@ -23,24 +23,8 @@ type Block struct {
 	//随机值
 	Nonce int64
 	//交易信息
-	Data []byte
+	Transactions []*Transaction
 }
-
-// func (block *Block) SetHash() {
-// 	tmp := [][]byte{
-// 		IntToByte(block.Version),
-// 		block.PrevBlockHash,
-// 		block.MerKelRoot,
-// 		IntToByte(block.TimeStamp),
-// 		IntToByte(block.Bits),
-// 		IntToByte(block.Nonce),
-// 		block.Data}
-// 	//2.参数为[][]byte类型，需要将block转成这个类型
-// 	data := bytes.Join(tmp, []byte{})
-// 	//1.参数为字节切片，需要构造这个切片
-// 	hash := sha256.Sum256(data)
-// 	block.Hash = hash[:]
-// }
 
 //将区块序列化为字节切片
 func (block *Block) Serialize() []byte {
@@ -62,16 +46,16 @@ func DeSerialize(data []byte) *Block {
 	CheckErr("decode err", err)
 	return &block
 }
-func NewBlock(data string, prevBlockHash []byte) *Block {
+func NewBlock(tss []*Transaction, prevBlockHash []byte) *Block {
 	block := Block{
 		Version:       1,
 		PrevBlockHash: prevBlockHash,
 		//Hash TODO
-		MerKelRoot: []byte{},
-		TimeStamp:  time.Now().Unix(),
-		Bits:       targetBits,
-		Nonce:      0,
-		Data:       []byte(data)}
+		MerKelRoot:   []byte{},
+		TimeStamp:    time.Now().Unix(),
+		Bits:         targetBits,
+		Nonce:        0,
+		Transactions: tss}
 	//block.SetHash()
 	pow := NewProofOfWork(&block)
 	block.Nonce, block.Hash = pow.Run()
@@ -80,7 +64,8 @@ func NewBlock(data string, prevBlockHash []byte) *Block {
 }
 
 //创世块创建
-func NewGenesisBlock() *Block {
-	return NewBlock("Genesis Block!", []byte{})
+func NewGenesisBlock(coinbase *Transaction) *Block {
+
+	return NewBlock([]*Transaction{coinbase}, []byte{})
 
 }

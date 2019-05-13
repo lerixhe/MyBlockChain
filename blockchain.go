@@ -24,17 +24,16 @@ type BlockChain struct {
 // InitBlockChain 初始化一个区块链.将原NewBLocChain()函数拆分为两个函数 初始化和获取句柄，以供其他函数使用
 func InitBlockChain() *BlockChain {
 	if isDBFileExist() {
-		fmt.Println(" blockchain exist already,just use it!")
+		fmt.Println("、 blockchain exist already,just use it!")
 		os.Exit(1)
 	}
-	//先从数据库管理文件里读有没有创建过的区块链数据库
 	db, err := bolt.Open(dbFile, 0600, nil)
 	CheckErr("createbucket err 0:", err)
 	var lastHash []byte
 	//以写的方式操作数据库
 	err = db.Update(func(tx *bolt.Tx) error {
 		//创建创世区块
-		gblock := NewGenesisBlock()
+		gblock := NewGenesisBlock(coinbase)
 		//创建数据库
 		bucket, err := tx.CreateBucket([]byte(blockBucket))
 		CheckErr("createbucket err 1:", err)
@@ -87,7 +86,7 @@ func GetBlockChainHandler() *BlockChain {
 }
 
 //添加区块
-func (bc *BlockChain) AddBlock(data string) {
+func (bc *BlockChain) AddBlock(tss []*Transaction) {
 	//读取上一区块的hash
 	var lastHash []byte
 	//利用区块链的数据库操作句柄，以只读方式取得上一区块的hash
@@ -101,7 +100,7 @@ func (bc *BlockChain) AddBlock(data string) {
 	})
 	CheckErr("read err 1:", err)
 	//利用得到的hash生产区块
-	block := NewBlock(data, lastHash)
+	block := NewBlock(tss, lastHash)
 	//将此区块写入数据库
 	err = bc.db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(blockBucket))
