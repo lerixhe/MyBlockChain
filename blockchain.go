@@ -11,6 +11,7 @@ import (
 const dbFile = "blockChain.db"
 const blockBucket = "bucket"
 const lastHashKey = "key"
+const genesisInfo = "EThe Times 03/Jan/2009 Chancellor on brink of second bailout for banks"
 
 type BlockChain struct {
 	//blocks []*Block
@@ -22,9 +23,9 @@ type BlockChain struct {
 }
 
 // InitBlockChain 初始化一个区块链.将原NewBLocChain()函数拆分为两个函数 初始化和获取句柄，以供其他函数使用
-func InitBlockChain() *BlockChain {
+func InitBlockChain(address string) *BlockChain {
 	if isDBFileExist() {
-		fmt.Println("、 blockchain exist already,just use it!")
+		fmt.Println("blockchain exist already,just use it!")
 		os.Exit(1)
 	}
 	db, err := bolt.Open(dbFile, 0600, nil)
@@ -32,6 +33,8 @@ func InitBlockChain() *BlockChain {
 	var lastHash []byte
 	//以写的方式操作数据库
 	err = db.Update(func(tx *bolt.Tx) error {
+
+		coinbase := NewCoinBaseTrans(address, genesisInfo)
 		//创建创世区块
 		gblock := NewGenesisBlock(coinbase)
 		//创建数据库

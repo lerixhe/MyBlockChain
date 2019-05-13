@@ -32,7 +32,7 @@ func (pow *ProofOfWork) PrepareData(nonce int64) []byte {
 		IntToByte(block.TimeStamp),
 		IntToByte(targetBits),
 		IntToByte(nonce),
-		block.Data}
+	} //block.Data}
 	//2.参数为[][]byte类型，需要将block转成这个类型
 	data := bytes.Join(tmp, []byte{})
 	return data
