@@ -3,8 +3,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/boltdb/bolt"
 	"os"
+
+	"github.com/boltdb/bolt"
 )
 
 const dbFile = "blockChain.db"
@@ -20,34 +21,64 @@ type BlockChain struct {
 	tail []byte
 }
 
-//创建区块链
-func NewBlockChain() *BlockChain {
+// InitBlockChain 初始化一个区块链.将原NewBLocChain()函数拆分为两个函数 初始化和获取句柄，以供其他函数使用
+func InitBlockChain() *BlockChain {
+	if isDBFileExist() {
+		fmt.Println(" blockchain exist already,just use it!")
+		os.Exit(1)
+	}
 	//先从数据库管理文件里读有没有创建过的区块链数据库
 	db, err := bolt.Open(dbFile, 0600, nil)
-	CheckErr("dberror:", err)
+	CheckErr("createbucket err 0:", err)
 	var lastHash []byte
 	//以写的方式操作数据库
 	err = db.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(blockBucket))
-		if bucket == nil {
-			//根据库key没有查到数据库，说明是新的区块链，需要创建创世区块
-			gblock := NewGenesisBlock()
-			//创建数据库
-			bucket, err := tx.CreateBucket([]byte(blockBucket))
-			CheckErr("createbucket err 1:", err)
-			//写入区块信息，包括区块内容和区块的hash
-			bucket.Put(gblock.Hash, gblock.Serialize())
-			CheckErr("putblock err 1:", err)
-			bucket.Put([]byte(lastHashKey), gblock.Hash)
-			CheckErr("putlasthashkey err 1:", err)
-			lastHash = bucket.Get([]byte(lastHashKey)) //1
-		} else {
-			lastHash = bucket.Get([]byte(lastHashKey)) //2
-			fmt.Println("there is already a blockchain,just use it!")
-		}
+		//创建创世区块
+		gblock := NewGenesisBlock()
+		//创建数据库
+		bucket, err := tx.CreateBucket([]byte(blockBucket))
+		CheckErr("createbucket err 1:", err)
+		//写入区块信息，包括区块内容和区块的hash
+		bucket.Put(gblock.Hash, gblock.Serialize())
+		CheckErr("createbucket err 2:", err)
+		bucket.Put([]byte(lastHashKey), gblock.Hash)
+		CheckErr("createbucket err 3:", err)
+		lastHash = bucket.Get([]byte(lastHashKey)) //1
+		fmt.Println("create blockchain successfully")
 
 		//既然1和2不论什么情况都要运行，即不管bucket是不是nil，都要取出最后一个区块的哈希值
 		//那为何不摘出来只写一句呢？只写一句的话会bolt报错
+		return nil
+	})
+	CheckErr("update err 1:", err)
+	//返回构建成功的区块链的引用
+	return &BlockChain{db, lastHash}
+}
+
+//判断数据库文件存在
+func isDBFileExist() bool {
+	_, err := os.Stat(dbFile)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
+//获取区块链对象操作句柄
+func GetBlockChainHandler() *BlockChain {
+	//先判断有没有数据库管理文件
+	if !isDBFileExist() {
+		fmt.Println("please create blockchain first!")
+		os.Exit(1)
+	}
+	//获取数据库文件操作句柄
+	db, err := bolt.Open(dbFile, 0600, nil)
+	CheckErr("dberror:", err)
+	var lastHash []byte
+	//以读的方式操作数据库
+	err = db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(blockBucket))
+		lastHash = bucket.Get([]byte(lastHashKey))
 		return nil
 	})
 	CheckErr("update err 1:", err)
