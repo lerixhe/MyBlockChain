@@ -13,7 +13,7 @@ type ProofOfWork struct {
 	target *big.Int
 }
 
-const targetBits = 24
+const targetBits = 18
 
 func NewProofOfWork(block *Block) *ProofOfWork {
 	target := big.NewInt(1)

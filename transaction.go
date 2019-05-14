@@ -38,8 +38,8 @@ func (input *TSInput) CanUnlockUTXOWith(unlockData string) bool {
 	return input.ScriptSig == unlockData
 }
 
-//检查当前佣金光华是这个utxo的所有者
-func (ouput *TSOutput) CanBeUnlockWith(unlockData string) bool {
+//检查当前用户是这个utxo的所有者
+func (ouput *TSOutput) CanBeUnlockedWith(unlockData string) bool {
 	return ouput.ScriptPubKey == unlockData
 }
 
@@ -91,8 +91,8 @@ func NewTransaction(from, to string, amount float64, bc *BlockChain) *Transactio
 		fmt.Println("not enough money!")
 		os.Exit(1)
 	}
-	inputs := []TSInput{}
-	outputs := []TSOutput{}
+	var inputs []TSInput
+	var outputs []TSOutput
 	//进行output到input的转换
 	//遍历可用UTXOs得到outputs所在交易ID和outputs索引切片
 	for txId, outputsIndexes := range vaidUTXOs {
@@ -107,7 +107,7 @@ func NewTransaction(from, to string, amount float64, bc *BlockChain) *Transactio
 	outputs = append(outputs, output)
 	//可能需要找零
 	if total > amount {
-		output := TSOutput{Value: total - amount, ScriptPubKey: to}
+		output := TSOutput{Value: total - amount, ScriptPubKey: from}
 		outputs = append(outputs, output)
 	}
 	tx := Transaction{

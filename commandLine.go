@@ -8,15 +8,14 @@ import (
 
 const usage = `
 	createChain --address ADDRESSS "create a blockchain"
-	addBlock --data DATA  "add a blockchain"
 	send --from SOR_ADDRESS --to TAR_ADDRESS --amount AMOUNT "send coins from source_address to target_address"
-	getbalance --address ADDRESS "get balance of address"
+	getBalance --address ADDRESS "get balance of address"
 	printChain            "print all blocks"
 `
-const AddBlockCmdString = "addBlock"
 const PrintChainCmdString = "printChain"
 const CreateChainCmdString = "createChain"
 const GetBalanceCmdString = "getBalance"
+const SendCmdString = "send"
 
 type CLI struct {
 	bc *BlockChain
@@ -34,13 +33,17 @@ func (cli *CLI) parameterCheck() {
 	}
 }
 func (cli *CLI) Run() {
+	//检测用户输入格式规范
 	cli.parameterCheck()
-	addBlockCmd := flag.NewFlagSet(AddBlockCmdString, flag.ExitOnError)
+	//捕获命令字符串，获取各个命令对象
+	sendCmd := flag.NewFlagSet(SendCmdString, flag.ExitOnError)
 	createChainCmd := flag.NewFlagSet(CreateChainCmdString, flag.ExitOnError)
 	getBalanceCmd := flag.NewFlagSet(GetBalanceCmdString, flag.ExitOnError)
 	printChainCmd := flag.NewFlagSet(PrintChainCmdString, flag.ExitOnError)
-	//参数接受
-	addBlockCmdPara := addBlockCmd.String("data", "", "block transaction info")
+	//设置命令对象的可接受参数
+	fromCmdPara := sendCmd.String("from", "", "from_address info")
+	toCmdPara := sendCmd.String("to", "", "target_address info")
+	amountCmdPara := sendCmd.Float64("amount", 0, "amount info")
 	createChainCmdPara := createChainCmd.String("address", "", "address info")
 	getBalanceCmdPara := getBalanceCmd.String("address", "", "address info")
 	switch os.Args[1] {
@@ -53,14 +56,14 @@ func (cli *CLI) Run() {
 			}
 			cli.CreateChain(*createChainCmdPara)
 		}
-	case AddBlockCmdString:
-		err := addBlockCmd.Parse(os.Args[2:])
+	case SendCmdString:
+		err := sendCmd.Parse(os.Args[2:])
 		CheckErr("parse err:", err)
-		if addBlockCmd.Parsed() {
-			if *addBlockCmdPara == "" {
+		if sendCmd.Parsed() {
+			if *fromCmdPara == "" || *toCmdPara == "" || *amountCmdPara <= 0 {
 				cli.PrintUsage()
 			}
-			cli.AddBlock(*addBlockCmdPara)
+			cli.Send(*fromCmdPara, *toCmdPara, *amountCmdPara)
 		}
 	case GetBalanceCmdString:
 		err := getBalanceCmd.Parse(os.Args[2:])

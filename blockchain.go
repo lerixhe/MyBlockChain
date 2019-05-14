@@ -150,6 +150,8 @@ func (bci *BlockChainIterator) Next() *Block {
 	CheckErr("next() err:", err)
 	return block
 }
+
+//查找所有区块范围内，某个地址的所有可用UTXO所在的交易
 func (bc *BlockChain) findUTXOTransactions(address string) []Transaction {
 	var UTXOTransactions []Transaction
 	spentUTXO := make(map[string][]int64)
@@ -177,7 +179,7 @@ func (bc *BlockChain) findUTXOTransactions(address string) []Transaction {
 						}
 					}
 				}
-				if output.CanBeUnlockWith(address) {
+				if output.CanBeUnlockedWith(address) {
 					UTXOTransactions = append(UTXOTransactions, *tx)
 				}
 			}
@@ -192,13 +194,15 @@ func (bc *BlockChain) findUTXOTransactions(address string) []Transaction {
 
 //返回指定地址的所有可用UTXO
 //注意：这些UTXOs格式，只包含单纯的outputs信息，去掉了所在的交易信息
-func (bc *BlockChain) FindUTXO(address string) []*TSOutput {
-	var UTXOs []*TSOutput
+func (bc *BlockChain) FindUTXO(address string) []TSOutput {
+	var UTXOs []TSOutput
+	//当前地址所有可用UTXO所在的交易
 	txs := bc.findUTXOTransactions(address)
 	for _, tx := range txs {
 		for _, utxo := range tx.TSOutputs {
-			if utxo.CanBeUnlockWith(address) {
-				UTXOs = append(UTXOs, &utxo)
+			//当前地址拥有的UTXO
+			if utxo.CanBeUnlockedWith(address) {
+				UTXOs = append(UTXOs, utxo)
 			}
 		}
 	}
@@ -208,30 +212,23 @@ func (bc *BlockChain) FindUTXO(address string) []*TSOutput {
 //返回指定地址的满足一定余额要求的可用UTXO
 //注意：这些UTXO格式要求包含所在交易ID和包含的outputs索引
 func (bc *BlockChain) FindSuitableUTXO(fromAddress string, amount float64) (map[string][]int64, float64) {
-	// var UTXOs []*TSOutput
-	// var total float64
-	// //先找到所有可用UTXO
-	// allUTXOs := bc.FindUTXO(fromAddress)
-	// //遍历allUTXOs获得一定余额要求的UTXOs
-	// for _, utxo := range allUTXOs {
-	// 	if utxo.Value < amount {
-	// 		total += amount
-	// 		UTXOs = append(UTXOs, utxo)
-	// 	}
-	// }
-	var UTXOs map[string]int64
+
+	UTXOs := make(map[string][]int64)
 	var total float64
-	//获取所有交易
-	allUTXOs := bc.findUTXOTransactions(fromAddress)
+	//获取某个地址的所有可用UTXO所在的交易列表
+	validUTXOtxs := bc.findUTXOTransactions(fromAddress)
 	//遍历交易
-	for _, txs := range allUTXOs {
-		outputs := txs.TSOutputs
+FIND:
+	for _, tx := range validUTXOtxs {
+		outputs := tx.TSOutputs
 		//遍历outputs
-		for _, output := range outputs {
-			if output.CanBeUnlockWith(fromAddress) {
+		for index, output := range outputs {
+			if output.CanBeUnlockedWith(fromAddress) {
 				if total < amount {
 					total += output.Value
-					UTXOs[outputs.] = append(UTXOs, output)
+					UTXOs[string(tx.TSID)] = append(UTXOs[string(tx.TSID)], int64(index))
+				} else {
+					break FIND
 				}
 			}
 		}
