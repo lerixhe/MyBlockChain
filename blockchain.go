@@ -150,3 +150,91 @@ func (bci *BlockChainIterator) Next() *Block {
 	CheckErr("next() err:", err)
 	return block
 }
+func (bc *BlockChain) findUTXOTransactions(address string) []Transaction {
+	var UTXOTransactions []Transaction
+	spentUTXO := make(map[string][]int64)
+	it := bc.NewBlockChainIterrator()
+	for {
+		block := it.Next()
+
+		for _, tx := range block.Transactions {
+
+			if !tx.IsCoinbase() {
+				for _, input := range tx.TSInputs {
+					if input.CanUnlockUTXOWith(address) {
+						spentUTXO[string(input.TSID)] = append(spentUTXO[string(input.TSID)], input.Vout)
+					}
+				}
+			}
+
+		OUTPUTS:
+			for currIndex, output := range tx.TSOutputs {
+				if spentUTXO[string(tx.TSID)] != nil {
+					indexs := spentUTXO[string(tx.TSID)]
+					for _, index := range indexs {
+						if int64(currIndex) == index {
+							continue OUTPUTS
+						}
+					}
+				}
+				if output.CanBeUnlockWith(address) {
+					UTXOTransactions = append(UTXOTransactions, *tx)
+				}
+			}
+
+		}
+		if len(block.PrevBlockHash) == 0 {
+			break
+		}
+	}
+	return UTXOTransactions
+}
+
+//返回指定地址的所有可用UTXO
+//注意：这些UTXOs格式，只包含单纯的outputs信息，去掉了所在的交易信息
+func (bc *BlockChain) FindUTXO(address string) []*TSOutput {
+	var UTXOs []*TSOutput
+	txs := bc.findUTXOTransactions(address)
+	for _, tx := range txs {
+		for _, utxo := range tx.TSOutputs {
+			if utxo.CanBeUnlockWith(address) {
+				UTXOs = append(UTXOs, &utxo)
+			}
+		}
+	}
+	return UTXOs
+}
+
+//返回指定地址的满足一定余额要求的可用UTXO
+//注意：这些UTXO格式要求包含所在交易ID和包含的outputs索引
+func (bc *BlockChain) FindSuitableUTXO(fromAddress string, amount float64) (map[string][]int64, float64) {
+	// var UTXOs []*TSOutput
+	// var total float64
+	// //先找到所有可用UTXO
+	// allUTXOs := bc.FindUTXO(fromAddress)
+	// //遍历allUTXOs获得一定余额要求的UTXOs
+	// for _, utxo := range allUTXOs {
+	// 	if utxo.Value < amount {
+	// 		total += amount
+	// 		UTXOs = append(UTXOs, utxo)
+	// 	}
+	// }
+	var UTXOs map[string]int64
+	var total float64
+	//获取所有交易
+	allUTXOs := bc.findUTXOTransactions(fromAddress)
+	//遍历交易
+	for _, txs := range allUTXOs {
+		outputs := txs.TSOutputs
+		//遍历outputs
+		for _, output := range outputs {
+			if output.CanBeUnlockWith(fromAddress) {
+				if total < amount {
+					total += output.Value
+					UTXOs[outputs.] = append(UTXOs, output)
+				}
+			}
+		}
+	}
+	return UTXOs, total
+}

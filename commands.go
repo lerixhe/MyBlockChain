@@ -2,14 +2,18 @@ package main
 
 import "fmt"
 
+// addblock 命令
 func (cli *CLI) AddBlock(data string) {
 	//bc := GetBlockChainHandler()
 	//bc.AddBlock(data)
 	//cli.bc.AddBlock(data)
 }
+
+// printChain 命令
 func (cli *CLI) PrintChain() {
 	//打印数据
 	bc := GetBlockChainHandler()
+	bc.db.Close()
 	bci := bc.NewBlockChainIterrator()
 	for {
 		block := bci.Next()
@@ -30,7 +34,21 @@ func (cli *CLI) PrintChain() {
 		}
 	}
 }
+
+// createChain命令
 func (cli *CLI) CreateChain(addr string) {
 	bc := InitBlockChain(addr)
 	defer bc.db.Close()
+}
+
+// getbalance 命令
+func (cli *CLI) GetBalance(address string) {
+	bc := GetBlockChainHandler()
+	defer bc.db.Close()
+	utxos := bc.FindUTXO(address)
+	var total float64 = 0.0
+	for _, utxo := range utxos {
+		total += utxo.Value
+	}
+	fmt.Printf("the balance od %s is %f\n", address, total)
 }
