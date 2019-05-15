@@ -89,7 +89,7 @@ func GetBlockChainHandler() *BlockChain {
 }
 
 //添加区块
-func (bc *BlockChain) AddBlock(tss []*Transaction) {
+func (bc *BlockChain) AddBlock(txs []*Transaction) {
 	//读取上一区块的hash
 	var lastHash []byte
 	//利用区块链的数据库操作句柄，以只读方式取得上一区块的hash
@@ -103,7 +103,7 @@ func (bc *BlockChain) AddBlock(tss []*Transaction) {
 	})
 	CheckErr("read err 1:", err)
 	//利用得到的hash生产区块
-	block := NewBlock(tss, lastHash)
+	block := NewBlock(txs, lastHash)
 	//将此区块写入数据库
 	err = bc.db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(blockBucket))
@@ -162,17 +162,17 @@ func (bc *BlockChain) findUTXOTransactions(address string) []Transaction {
 		for _, tx := range block.Transactions {
 
 			if !tx.IsCoinbase() {
-				for _, input := range tx.TSInputs {
+				for _, input := range tx.TXInputs {
 					if input.CanUnlockUTXOWith(address) {
-						spentUTXO[string(input.TSID)] = append(spentUTXO[string(input.TSID)], input.Vout)
+						spentUTXO[string(input.TXID)] = append(spentUTXO[string(input.TXID)], input.Vout)
 					}
 				}
 			}
 
 		OUTPUTS:
-			for currIndex, output := range tx.TSOutputs {
-				if spentUTXO[string(tx.TSID)] != nil {
-					indexs := spentUTXO[string(tx.TSID)]
+			for currIndex, output := range tx.TXOutputs {
+				if spentUTXO[string(tx.TXID)] != nil {
+					indexs := spentUTXO[string(tx.TXID)]
 					for _, index := range indexs {
 						if int64(currIndex) == index {
 							continue OUTPUTS
@@ -194,12 +194,12 @@ func (bc *BlockChain) findUTXOTransactions(address string) []Transaction {
 
 //返回指定地址的所有可用UTXO
 //注意：这些UTXOs格式，只包含单纯的outputs信息，去掉了所在的交易信息
-func (bc *BlockChain) FindUTXO(address string) []TSOutput {
-	var UTXOs []TSOutput
+func (bc *BlockChain) FindUTXO(address string) []TXOutput {
+	var UTXOs []TXOutput
 	//当前地址所有可用UTXO所在的交易
 	txs := bc.findUTXOTransactions(address)
 	for _, tx := range txs {
-		for _, utxo := range tx.TSOutputs {
+		for _, utxo := range tx.TXOutputs {
 			//当前地址拥有的UTXO
 			if utxo.CanBeUnlockedWith(address) {
 				UTXOs = append(UTXOs, utxo)
@@ -220,13 +220,13 @@ func (bc *BlockChain) FindSuitableUTXO(fromAddress string, amount float64) (map[
 	//遍历交易
 FIND:
 	for _, tx := range validUTXOtxs {
-		outputs := tx.TSOutputs
+		outputs := tx.TXOutputs
 		//遍历outputs
 		for index, output := range outputs {
 			if output.CanBeUnlockedWith(fromAddress) {
 				if total < amount {
 					total += output.Value
-					UTXOs[string(tx.TSID)] = append(UTXOs[string(tx.TSID)], int64(index))
+					UTXOs[string(tx.TXID)] = append(UTXOs[string(tx.TXID)], int64(index))
 				} else {
 					break FIND
 				}

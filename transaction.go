@@ -12,21 +12,21 @@ const reward float64 = 12.5
 
 type Transaction struct {
 	//交易ID
-	TSID []byte
+	TXID []byte
 	//流入记录列表
-	TSInputs []TSInput
+	TXInputs []TXInput
 	//流出记录列表
-	TSOutputs []TSOutput
+	TXOutputs []TXOutput
 }
-type TSInput struct {
+type TXInput struct {
 	//资产来源的交易ID
-	TSID []byte
+	TXID []byte
 	//本笔交易在流出记录中的索引值
 	Vout int64
 	//解锁脚本，指明可以使用某个output的条件
 	ScriptSig string
 }
-type TSOutput struct {
+type TXOutput struct {
 	//支付给收款方的金额
 	Value float64
 	//锁定脚本，指定收款方的地址
@@ -34,23 +34,23 @@ type TSOutput struct {
 }
 
 //检查当前用户能都解开引用的utxo
-func (input *TSInput) CanUnlockUTXOWith(unlockData string) bool {
+func (input *TXInput) CanUnlockUTXOWith(unlockData string) bool {
 	return input.ScriptSig == unlockData
 }
 
 //检查当前用户是这个utxo的所有者
-func (ouput *TSOutput) CanBeUnlockedWith(unlockData string) bool {
+func (ouput *TXOutput) CanBeUnlockedWith(unlockData string) bool {
 	return ouput.ScriptPubKey == unlockData
 }
 
 //设置交易ID，取哈希值作为ID
-func (ts *Transaction) SetTSID() {
+func (tx *Transaction) SetTXID() {
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
-	err := encoder.Encode(ts)
-	CheckErr("encode ts err:", err)
+	err := encoder.Encode(tx)
+	CheckErr("encode tx err:", err)
 	hash := sha256.Sum256(buffer.Bytes())
-	ts.TSID = hash[:]
+	tx.TXID = hash[:]
 }
 
 //创建coinbase交易，为矿工奖励交易
@@ -58,24 +58,24 @@ func NewCoinBaseTrans(address, data string) *Transaction {
 	if data == "" {
 		data = fmt.Sprintf("reward to %s %d btc", address, reward)
 	}
-	input := TSInput{
-		TSID:      []byte{},
+	input := TXInput{
+		TXID:      []byte{},
 		Vout:      -1,
 		ScriptSig: data}
-	output := TSOutput{
+	output := TXOutput{
 		Value:        reward,
 		ScriptPubKey: address}
-	ts := Transaction{
-		TSInputs:  []TSInput{input},
-		TSOutputs: []TSOutput{output}}
-	ts.SetTSID()
-	return &ts
+	tx := Transaction{
+		TXInputs:  []TXInput{input},
+		TXOutputs: []TXOutput{output}}
+	tx.SetTXID()
+	return &tx
 }
 
 //判断当前交易是不是coinbase
-func (ts *Transaction) IsCoinbase() bool {
-	if len(ts.TSInputs) == 1 {
-		if len(ts.TSInputs[0].TSID) == 0 && ts.TSInputs[0].Vout == -1 {
+func (tx *Transaction) IsCoinbase() bool {
+	if len(tx.TXInputs) == 1 {
+		if len(tx.TXInputs[0].TXID) == 0 && tx.TXInputs[0].Vout == -1 {
 			return true
 		}
 	}
@@ -91,29 +91,29 @@ func NewTransaction(from, to string, amount float64, bc *BlockChain) *Transactio
 		fmt.Println("not enough money!")
 		os.Exit(1)
 	}
-	var inputs []TSInput
-	var outputs []TSOutput
+	var inputs []TXInput
+	var outputs []TXOutput
 	//进行output到input的转换
 	//遍历可用UTXOs得到outputs所在交易ID和outputs索引切片
 	for txId, outputsIndexes := range vaidUTXOs {
 		//遍历outoputs索引切片获得单个output的位置索引
 		for _, outputIndex := range outputsIndexes {
-			input := TSInput{TSID: []byte(txId), Vout: outputIndex, ScriptSig: from}
+			input := TXInput{TXID: []byte(txId), Vout: outputIndex, ScriptSig: from}
 			inputs = append(inputs, input)
 		}
 	}
 	//创建交易后的output
-	output := TSOutput{Value: amount, ScriptPubKey: to}
+	output := TXOutput{Value: amount, ScriptPubKey: to}
 	outputs = append(outputs, output)
 	//可能需要找零
 	if total > amount {
-		output := TSOutput{Value: total - amount, ScriptPubKey: from}
+		output := TXOutput{Value: total - amount, ScriptPubKey: from}
 		outputs = append(outputs, output)
 	}
 	tx := Transaction{
-		TSID:      []byte{},
-		TSInputs:  inputs,
-		TSOutputs: outputs}
-	tx.SetTSID()
+		TXID:      []byte{},
+		TXInputs:  inputs,
+		TXOutputs: outputs}
+	tx.SetTXID()
 	return &tx
 }

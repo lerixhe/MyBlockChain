@@ -7,11 +7,11 @@ import (
 )
 
 const usage = `
-	createChain --address ADDRESSS "create a blockchain"
-	send --from SOR_ADDRESS --to TAR_ADDRESS --amount AMOUNT "send coins from source_address to target_address"
-	getBalance --address ADDRESS "get balance of address"
-	printChain            "print all blocks"
-	newWallet "create a new wallet"
+	createChain   --address ADDRESS      "create a blockchain"
+	send          --from SOR_ADDRESS --to TAR_ADDRESS --amount AMOUNT      "send coins"
+	getBalance    --address ADDRESS      "get balance of address"
+	printChain    "print all blocks"
+	newWallet     "create a new wallet"
 `
 const PrintChainCmdString = "printChain"
 const CreateChainCmdString = "createChain"

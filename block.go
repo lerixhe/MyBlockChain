@@ -51,7 +51,7 @@ func DeSerialize(data []byte) *Block {
 //创建新区块
 //输入：交易，上一个区块的哈希
 //输出：区块实体引用
-func NewBlock(tss []*Transaction, prevBlockHash []byte) *Block {
+func NewBlock(txs []*Transaction, prevBlockHash []byte) *Block {
 	block := Block{
 		Version:       1,
 		PrevBlockHash: prevBlockHash,
@@ -60,7 +60,7 @@ func NewBlock(tss []*Transaction, prevBlockHash []byte) *Block {
 		TimeStamp:    time.Now().Unix(),
 		Bits:         targetBits,
 		Nonce:        0,
-		Transactions: tss}
+		Transactions: txs}
 	//block.SetHash()
 	pow := NewProofOfWork(&block)
 	block.Nonce, block.Hash = pow.Run()
@@ -80,7 +80,7 @@ func (block *Block) TransactionsHash() []byte {
 	var txHashes [][]byte
 	txs := block.Transactions
 	for _, tx := range txs {
-		txHashes = append(txHashes, tx.TSID)
+		txHashes = append(txHashes, tx.TXID)
 	}
 	data := bytes.Join(txHashes, nil)
 	hash := sha256.Sum256(data)

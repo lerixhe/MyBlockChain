@@ -55,9 +55,14 @@ func (cli *CLI) Send(from, to string, amount float64) {
 
 //newWallet命令 创建钱包
 func (cli *CLI) CreateWallet() {
-	wallet := NewWallet()
-	fmt.Println("create a wallet successfully!")
-	fmt.Printf("your privatekey:%x\n", wallet.PrivateKey)
-	//fmt.Printf("your privatekey:%x\n", wallet.PrivateKey.PublicKey)
-	fmt.Printf("your publickey:%x\n", wallet.PublicKey) //16进制表示
+	// wallet := NewWallet()
+	// address := wallet.GetAddress()
+	// fmt.Println("create a wallet successfully!")
+	// fmt.Printf("your privatekey:%x\n", wallet.PrivateKey)
+	// //fmt.Printf("your privatekey:%x\n", wallet.PrivateKey.PublicKey)
+	// fmt.Printf("your publickey:%x\n", wallet.PublicKey) //16进制表示
+	// fmt.Printf("your address:%s", address)
+	ws := NewWallets()
+	address := ws.CreateWallet()
+	fmt.Printf("your address:%s", address)
 }
