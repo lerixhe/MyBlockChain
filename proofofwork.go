@@ -8,13 +8,16 @@ import (
 	"math/big"
 )
 
+// 定义工作量证明结构
 type ProofOfWork struct {
 	block  *Block
 	target *big.Int
 }
 
+// 挖矿难度:前置0的个数X6
 const targetBits = 18
 
+//创建工作量证明
 func NewProofOfWork(block *Block) *ProofOfWork {
 	target := big.NewInt(1)
 	target.Lsh(target, uint(256-targetBits))
@@ -25,6 +28,8 @@ func NewProofOfWork(block *Block) *ProofOfWork {
 //拼装上一个区块
 func (pow *ProofOfWork) PrepareData(nonce int64) []byte {
 	block := pow.block
+	//设置梅特耳根
+	block.MerKelRoot = block.TransactionsHash()
 	tmp := [][]byte{
 		IntToByte(block.Version),
 		block.PrevBlockHash,
@@ -32,9 +37,10 @@ func (pow *ProofOfWork) PrepareData(nonce int64) []byte {
 		IntToByte(block.TimeStamp),
 		IntToByte(targetBits),
 		IntToByte(nonce),
-	} //block.Data}
+		//to do
+	}
 	//2.参数为[][]byte类型，需要将block转成这个类型
-	data := bytes.Join(tmp, []byte{})
+	data := bytes.Join(tmp, nil)
 	return data
 }
 

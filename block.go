@@ -3,6 +3,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/gob"
 	"time"
 )
@@ -46,6 +47,10 @@ func DeSerialize(data []byte) *Block {
 	CheckErr("decode err", err)
 	return &block
 }
+
+//创建新区块
+//输入：交易，上一个区块的哈希
+//输出：区块实体引用
 func NewBlock(tss []*Transaction, prevBlockHash []byte) *Block {
 	block := Block{
 		Version:       1,
@@ -68,4 +73,16 @@ func NewGenesisBlock(coinbase *Transaction) *Block {
 
 	return NewBlock([]*Transaction{coinbase}, []byte{})
 
+}
+
+//区块的内所有交易的梅克尔根,这里使用拼接，简单模拟，没有使用真正的梅克尔树
+func (block *Block) TransactionsHash() []byte {
+	var txHashes [][]byte
+	txs := block.Transactions
+	for _, tx := range txs {
+		txHashes = append(txHashes, tx.TSID)
+	}
+	data := bytes.Join(txHashes, nil)
+	hash := sha256.Sum256(data)
+	return hash[:]
 }

@@ -17,7 +17,6 @@ func (cli *CLI) PrintChain() {
 		fmt.Printf("TimeStamp:%d\n", block.TimeStamp)
 		fmt.Printf("Bits:%d\n", block.Bits)
 		fmt.Printf("Nonce:%d\n", block.Nonce)
-		//fmt.Printf("Data:%s\n", block.Data)
 		fmt.Printf("isValid:%t\n", NewProofOfWork(block).Isvalid(block.Nonce))
 		fmt.Println("___________________________________")
 		fmt.Println("               ||                  ")
