@@ -11,11 +11,13 @@ const usage = `
 	send --from SOR_ADDRESS --to TAR_ADDRESS --amount AMOUNT "send coins from source_address to target_address"
 	getBalance --address ADDRESS "get balance of address"
 	printChain            "print all blocks"
+	newWallet "create a new wallet"
 `
 const PrintChainCmdString = "printChain"
 const CreateChainCmdString = "createChain"
 const GetBalanceCmdString = "getBalance"
 const SendCmdString = "send"
+const NewWalletCmdString = "newWallet"
 
 type CLI struct {
 	bc *BlockChain
@@ -36,6 +38,7 @@ func (cli *CLI) Run() {
 	//检测用户输入格式规范
 	cli.parameterCheck()
 	//捕获命令字符串，获取各个命令对象
+	newWalletCmd := flag.NewFlagSet(NewWalletCmdString, flag.ExitOnError)
 	sendCmd := flag.NewFlagSet(SendCmdString, flag.ExitOnError)
 	createChainCmd := flag.NewFlagSet(CreateChainCmdString, flag.ExitOnError)
 	getBalanceCmd := flag.NewFlagSet(GetBalanceCmdString, flag.ExitOnError)
@@ -46,7 +49,14 @@ func (cli *CLI) Run() {
 	amountCmdPara := sendCmd.Float64("amount", 0, "amount info")
 	createChainCmdPara := createChainCmd.String("address", "", "address info")
 	getBalanceCmdPara := getBalanceCmd.String("address", "", "address info")
+	//先switch 第一个参数
 	switch os.Args[1] {
+	case NewWalletCmdString:
+		err := newWalletCmd.Parse(os.Args[2:])
+		CheckErr("parse err:", err)
+		if newWalletCmd.Parsed() {
+			cli.CreateWallet()
+		}
 	case CreateChainCmdString:
 		err := createChainCmd.Parse(os.Args[2:])
 		CheckErr("parse err:", err)
