@@ -8,9 +8,11 @@ import (
 	"crypto/sha256"
 	"encoding/gob"
 	"fmt"
+	"io/ioutil"
+	"os"
+
 	"github.com/mr-tron/base58"
 	"golang.org/x/crypto/ripemd160"
-	"io/ioutil"
 )
 
 const walletFileName = "wallets.dat"
@@ -34,6 +36,7 @@ func NewWallet() *Wallet {
 }
 
 //生成钱包地址：原理是使用算法将公钥转化为人类可读字符
+//Bitcoin地址的生成公式：base58([prefix] + [hash160(pubkey)] + [checksum])
 //过程讲解参考：https://www.jianshu.com/p/8d298e10e514   https://blog.csdn.net/jeason29/article/details/51576659
 func (wallet *Wallet) GetAddress() string {
 	fmt.Println("generating wallet address,please wait...")
@@ -58,7 +61,7 @@ func (wallet *Wallet) GetAddress() string {
 	fmt.Printf("newpayload:      %x\n", newpayload)
 	//获得地址
 	address := base58.Encode(newpayload)
-	fmt.Println("address:", address)
+	fmt.Println("address:        ", address)
 	return address
 }
 
@@ -67,12 +70,14 @@ type Wallets struct {
 	Wallets map[string]*Wallet
 }
 
-//创建钱包容器
+//创建空钱包容器,先尝试从文件中读取钱包容器
 func NewWallets() *Wallets {
-	return &Wallets{make(map[string]*Wallet)}
+	ws := &Wallets{make(map[string]*Wallet)}
+	ws.LoadWallets()
+	return ws
 }
 
-//使用容器创建钱包,并保存到本地
+//在钱包容器内创建钱包,把钱包容器保存到本地，返回新钱包地址
 func (ws *Wallets) CreateWallet() string {
 	wallet := NewWallet()
 	address := wallet.GetAddress()
@@ -81,7 +86,7 @@ func (ws *Wallets) CreateWallet() string {
 	return address
 }
 
-//保存钱包数据到本地
+//保存钱包容器数据到本地
 func (ws *Wallets) SaveWallets() {
 	var buff bytes.Buffer
 	gob.Register(elliptic.P256())
@@ -91,4 +96,33 @@ func (ws *Wallets) SaveWallets() {
 	//写入文件
 	err = ioutil.WriteFile(walletFileName, buff.Bytes(), 0644)
 	CheckErr("write file err:", err)
+}
+
+// 从本地数据中加载钱包容器
+func (ws *Wallets) LoadWallets() {
+	//1.判断数据文件是否存在
+	_, err := os.Stat(walletFileName)
+	if os.IsNotExist(err) {
+		return
+	}
+	//2.读取文件
+	buf, err := ioutil.ReadFile(walletFileName)
+	CheckErr("readfile err:", err)
+	//3.解码
+	var wallets Wallets
+	gob.Register(elliptic.P256())
+	decoder := gob.NewDecoder(bytes.NewBuffer(buf))
+	decoder.Decode(&wallets)
+	//4.传出
+	//ws = &wallets
+	ws.Wallets = wallets.Wallets
+}
+
+//获取钱包容器内的所有钱包地址
+func (ws *Wallets) GetAllAddresses() []string {
+	var addresses []string
+	for address := range ws.Wallets {
+		addresses = append(addresses, address)
+	}
+	return addresses
 }

@@ -55,14 +55,19 @@ func (cli *CLI) Send(from, to string, amount float64) {
 
 //newWallet命令 创建钱包
 func (cli *CLI) CreateWallet() {
-	// wallet := NewWallet()
-	// address := wallet.GetAddress()
-	// fmt.Println("create a wallet successfully!")
-	// fmt.Printf("your privatekey:%x\n", wallet.PrivateKey)
-	// //fmt.Printf("your privatekey:%x\n", wallet.PrivateKey.PublicKey)
-	// fmt.Printf("your publickey:%x\n", wallet.PublicKey) //16进制表示
-	// fmt.Printf("your address:%s", address)
+
 	ws := NewWallets()
 	address := ws.CreateWallet()
 	fmt.Printf("your address:%s", address)
+}
+
+//列出钱包内所有地址
+func (cli *CLI) ListAddresses() {
+	ws := NewWallets()
+	addresses := ws.GetAllAddresses()
+	var count = 1
+	for _, addr := range addresses {
+		fmt.Printf("address %d: %s\n", count, addr)
+		count++
+	}
 }
