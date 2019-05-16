@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 
@@ -152,18 +153,19 @@ func (bci *BlockChainIterator) Next() *Block {
 }
 
 //查找所有区块范围内，某个地址的所有可用UTXO所在的交易
-func (bc *BlockChain) findUTXOTransactions(address string) []Transaction {
+func (bc *BlockChain) findUTXOTransactions(pubKeyHash []byte) []Transaction {
 	var UTXOTransactions []Transaction
 	spentUTXO := make(map[string][]int64)
 	it := bc.NewBlockChainIterrator()
 	for {
+		//遍历区块
 		block := it.Next()
-
+		//遍历所有非coinbase交易，找出已花费的inputs,不统计这些交易了
 		for _, tx := range block.Transactions {
-
 			if !tx.IsCoinbase() {
 				for _, input := range tx.TXInputs {
-					if input.CanUnlockUTXOWith(address) {
+					//input中的公钥hash与目标公钥hash相等，则认为这是转给此公钥hash的金额，且已经花过了
+					if bytes.Equal(hash160(input.PubKey), pubKeyHash) {
 						spentUTXO[string(input.TXID)] = append(spentUTXO[string(input.TXID)], input.Vout)
 					}
 				}
@@ -179,7 +181,8 @@ func (bc *BlockChain) findUTXOTransactions(address string) []Transaction {
 						}
 					}
 				}
-				if output.CanBeUnlockedWith(address) {
+				//if output.CanBeUnlockedWith(address) {
+				if bytes.Equal(output.PubKeyHash, pubKeyHash) {
 					UTXOTransactions = append(UTXOTransactions, *tx)
 				}
 			}
@@ -194,36 +197,38 @@ func (bc *BlockChain) findUTXOTransactions(address string) []Transaction {
 
 //返回指定地址的所有可用UTXO
 //注意：这些UTXOs格式，只包含单纯的outputs信息，去掉了所在的交易信息
-func (bc *BlockChain) FindUTXO(address string) []TXOutput {
-	var UTXOs []TXOutput
+func (bc *BlockChain) FindUTXOs(pubKeyHash []byte) []TXOutput {
+	var outputs []TXOutput
 	//当前地址所有可用UTXO所在的交易
-	txs := bc.findUTXOTransactions(address)
+	txs := bc.findUTXOTransactions(pubKeyHash)
 	for _, tx := range txs {
-		for _, utxo := range tx.TXOutputs {
+		for _, output := range tx.TXOutputs {
 			//当前地址拥有的UTXO
-			if utxo.CanBeUnlockedWith(address) {
-				UTXOs = append(UTXOs, utxo)
+			//if utxo.CanBeUnlockedWith(pubKeyHash) {
+			if bytes.Equal(output.PubKeyHash, pubKeyHash) {
+				outputs = append(outputs, output)
 			}
 		}
 	}
-	return UTXOs
+	return outputs
 }
 
 //返回指定地址的满足一定余额要求的可用UTXO
 //注意：这些UTXO格式要求包含所在交易ID和包含的outputs索引
-func (bc *BlockChain) FindSuitableUTXO(fromAddress string, amount float64) (map[string][]int64, float64) {
+func (bc *BlockChain) FindSuitableUTXO(pubKeyHash []byte, amount float64) (map[string][]int64, float64) {
 
 	UTXOs := make(map[string][]int64)
 	var total float64
 	//获取某个地址的所有可用UTXO所在的交易列表
-	validUTXOtxs := bc.findUTXOTransactions(fromAddress)
+	validUTXOtxs := bc.findUTXOTransactions(pubKeyHash)
 	//遍历交易
 FIND:
 	for _, tx := range validUTXOtxs {
 		outputs := tx.TXOutputs
 		//遍历outputs
 		for index, output := range outputs {
-			if output.CanBeUnlockedWith(fromAddress) {
+			//if output.CanBeUnlockedWith(pubKeyHash) {
+			if bytes.Equal(output.PubKeyHash, pubKeyHash) {
 				if total < amount {
 					total += output.Value
 					UTXOs[string(tx.TXID)] = append(UTXOs[string(tx.TXID)], int64(index))

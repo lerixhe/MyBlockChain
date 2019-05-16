@@ -35,9 +35,12 @@ func (cli *CLI) CreateChain(addr string) {
 
 // getbalance 命令
 func (cli *CLI) GetBalance(address string) {
+	if CheckAddress(address) {
+		fmt.Println("your address is invalid")
+	}
 	bc := GetBlockChainHandler()
 	defer bc.db.Close()
-	utxos := bc.FindUTXO(address)
+	utxos := bc.FindUTXOs(Address2hash160(address))
 	var total float64
 	for _, utxo := range utxos {
 		total += utxo.Value

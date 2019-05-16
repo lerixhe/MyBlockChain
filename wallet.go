@@ -12,7 +12,6 @@ import (
 	"os"
 
 	"github.com/mr-tron/base58"
-	"golang.org/x/crypto/ripemd160"
 )
 
 const walletFileName = "wallets.dat"
@@ -41,10 +40,7 @@ func NewWallet() *Wallet {
 func (wallet *Wallet) GetAddress() string {
 	fmt.Println("generating wallet address,please wait...")
 	//取得公钥hash
-	publicKeyBytes := sha256.Sum256(wallet.PublicKey)
-	ripemd := ripemd160.New()
-	ripemd.Write(publicKeyBytes[:])
-	publicKeyHash160 := ripemd.Sum(nil)
+	publicKeyHash160 := hash160(wallet.PublicKey)
 	fmt.Printf("publicKeyHash160:%x\n", publicKeyHash160)
 	//取得payload
 	payload := append([]byte{0x00}, publicKeyHash160...)
