@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/gob"
 	"fmt"
@@ -108,7 +109,7 @@ func NewTransaction(from, to string, amount float64, bc *BlockChain) *Transactio
 	pubKeyHash := hash160(pubKey)
 
 	vaidUTXOs, total := bc.FindSuitableUTXO(pubKeyHash, amount)
-	//vaidUTXOs:所需要的可用的utxo集合.map[string][]int64.分别为交易id：output的索引数组
+	//vaidUTXOs:所需要的可用的utxo集合.map[string][]int64.分别为交易id：该交易内属于某人的output的所有索引位置
 	//total,所有可用utxo金额合计实际数量。条件：>=amount
 	if total < amount {
 		fmt.Println("not enough money!")
@@ -125,7 +126,7 @@ func NewTransaction(from, to string, amount float64, bc *BlockChain) *Transactio
 			inputs = append(inputs, input)
 		}
 	}
-	//创建交易后的output,由input转换而来
+	//创建交易后的output
 	output := *NewTXOutput(amount, to)
 	outputs = append(outputs, output)
 	//可能需要找零
@@ -140,4 +141,10 @@ func NewTransaction(from, to string, amount float64, bc *BlockChain) *Transactio
 	tx.SetTXID()
 
 	return &tx
+}
+func (tx *Transaction) Sign(priKey ecdsa.PrivateKey, prevTXs map[string]Transaction) {
+	if tx.IsCoinbase() {
+		return
+	}
+
 }

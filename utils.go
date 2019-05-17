@@ -43,7 +43,7 @@ func hash160(publicKey []byte) []byte {
 	return publicKeyHash160
 }
 
-//根据地址转化为公钥hash
+//将钱包地址转化为公钥hash
 func Address2hash160(address string) []byte {
 	temp, err := base58.Decode(address)
 	CheckErr("decode err:", err)

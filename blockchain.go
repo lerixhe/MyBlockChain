@@ -153,6 +153,7 @@ func (bci *BlockChainIterator) Next() *Block {
 }
 
 //查找所有区块范围内，某个地址的所有可用UTXO所在的交易
+//原理，1. 遍历所有交易中的所有inputs，由于inputs，找到对应交易，再根据对应的所有索引，找到对应所有outputs，进而认为该交易内的所有属于他outputs已经消耗。
 func (bc *BlockChain) findUTXOTransactions(pubKeyHash []byte) []Transaction {
 	var UTXOTransactions []Transaction
 	spentUTXO := make(map[string][]int64)
@@ -165,12 +166,12 @@ func (bc *BlockChain) findUTXOTransactions(pubKeyHash []byte) []Transaction {
 			if !tx.IsCoinbase() {
 				for _, input := range tx.TXInputs {
 					//input中的公钥hash与目标公钥hash相等，则认为这是转给此公钥hash的金额，且已经花过了
+					//因为1个交易里的input是由output转化过来的，而这个交易已经发生了，故就认为这些inpput对应的output被花掉了
 					if bytes.Equal(hash160(input.PubKey), pubKeyHash) {
 						spentUTXO[string(input.TXID)] = append(spentUTXO[string(input.TXID)], input.Vout)
 					}
 				}
 			}
-
 		OUTPUTS:
 			for currIndex, output := range tx.TXOutputs {
 				if spentUTXO[string(tx.TXID)] != nil {
