@@ -17,6 +17,12 @@ func (cli *CLI) PrintChain() {
 		fmt.Printf("TimeStamp:%d\n", block.TimeStamp)
 		fmt.Printf("Bits:%d\n", block.Bits)
 		fmt.Printf("Nonce:%d\n", block.Nonce)
+		fmt.Println("transactions:")
+		for _, tx := range block.Transactions {
+			//fmt.Printf("            %d:%x\n", i, tx.TXID)
+			fmt.Println(tx.String())
+		}
+
 		fmt.Printf("isValid:%t\n", NewProofOfWork(block).Isvalid(block.Nonce))
 		fmt.Println("___________________________________")
 		fmt.Println("               ||                  ")
@@ -35,7 +41,7 @@ func (cli *CLI) CreateChain(addr string) {
 
 // getbalance 命令
 func (cli *CLI) GetBalance(address string) {
-	if CheckAddress(address) {
+	if !CheckAddress(address) {
 		fmt.Println("your address is invalid")
 	}
 	bc := GetBlockChainHandler()
@@ -54,6 +60,7 @@ func (cli *CLI) Send(from, to string, amount float64) {
 	defer bc.db.Close()
 	tx := NewTransaction(from, to, amount, bc)
 	bc.AddBlock([]*Transaction{tx})
+	fmt.Printf("send success,transaction ID:%x", tx.TXID)
 }
 
 //newWallet命令 创建钱包
@@ -73,4 +80,13 @@ func (cli *CLI) ListAddresses() {
 		fmt.Printf("address %d: %s\n", count, addr)
 		count++
 	}
+}
+
+// 查找交易
+func (cli *CLI) FindTX(txID []byte) {
+	bc := GetBlockChainHandler()
+	defer bc.db.Close()
+	tx, err := bc.FindTransaction(txID)
+	CheckErr("findTX err in FindTX:", err)
+	_ = tx.String()
 }

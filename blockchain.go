@@ -3,6 +3,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"os"
 
@@ -91,6 +93,13 @@ func GetBlockChainHandler() *BlockChain {
 
 //添加区块
 func (bc *BlockChain) AddBlock(txs []*Transaction) {
+	for _, tx := range txs {
+		isOk := bc.VerifyTransaction(*tx)
+		if !isOk {
+			fmt.Println("invalid transaction in addBlock")
+			return
+		}
+	}
 	//读取上一区块的hash
 	var lastHash []byte
 	//利用区块链的数据库操作句柄，以只读方式取得上一区块的hash
@@ -240,4 +249,47 @@ FIND:
 		}
 	}
 	return UTXOs, total
+}
+
+// 对某个交易进行签名
+// 输入：区块链对象，交易对象，私钥
+func (bc *BlockChain) SignTransaction(tx *Transaction, priKey ecdsa.PrivateKey) {
+	preTXs := make(map[string]Transaction)
+	for _, input := range tx.TXInputs {
+		preTX, err := bc.FindTransaction(input.TXID)
+		CheckErr("fidtx err:", err)
+		preTXs[string(input.TXID)] = *preTX
+	}
+	tx.Sign(&priKey, preTXs)
+}
+
+// 根据交易ID查找交易
+func (bc *BlockChain) FindTransaction(txID []byte) (*Transaction, error) {
+	it := bc.NewBlockChainIterrator()
+	for {
+		block := it.Next()
+		for _, tx := range block.Transactions {
+			if bytes.Equal(txID, tx.TXID) {
+				return tx, nil
+			}
+		}
+		if len(block.PrevBlockHash) == 0 {
+			break
+		}
+	}
+	return nil, errors.New("Transaticon not found")
+}
+
+//区块链的校验交易方法
+func (bc *BlockChain) VerifyTransaction(tx Transaction) bool {
+	if tx.IsCoinbase() {
+		return true
+	}
+	preTXs := make(map[string]Transaction)
+	for _, input := range tx.TXInputs {
+		preTx, err := bc.FindTransaction(input.TXID)
+		CheckErr("find err in verify:", err)
+		preTXs[string(input.TXID)] = *preTx
+	}
+	return tx.Verify(preTXs)
 }

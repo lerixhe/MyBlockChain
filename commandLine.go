@@ -13,6 +13,7 @@ const usage = `
 	printChain    "print all blocks"
 	newWallet     "create a new wallet"
 	listAddresses "list all walllet addresses"
+	findTX        --transactionID TXID   "find and print a transaction"
 `
 const PrintChainCmdString = "printChain"
 const CreateChainCmdString = "createChain"
@@ -20,6 +21,7 @@ const GetBalanceCmdString = "getBalance"
 const SendCmdString = "send"
 const NewWalletCmdString = "newWallet"
 const ListAddressesCmdString = "listAddresses"
+const FindTXCmdString = "findTX"
 
 type CLI struct {
 	bc *BlockChain
@@ -46,12 +48,14 @@ func (cli *CLI) Run() {
 	createChainCmd := flag.NewFlagSet(CreateChainCmdString, flag.ExitOnError)
 	getBalanceCmd := flag.NewFlagSet(GetBalanceCmdString, flag.ExitOnError)
 	printChainCmd := flag.NewFlagSet(PrintChainCmdString, flag.ExitOnError)
+	findTXCmd := flag.NewFlagSet(FindTXCmdString, flag.ExitOnError)
 	//设置命令对象的可接受参数
 	fromCmdPara := sendCmd.String("from", "", "from_address info")
 	toCmdPara := sendCmd.String("to", "", "target_address info")
 	amountCmdPara := sendCmd.Float64("amount", 0, "amount info")
 	createChainCmdPara := createChainCmd.String("address", "", "address info")
 	getBalanceCmdPara := getBalanceCmd.String("address", "", "address info")
+	findTXCmdPara := findTXCmd.String("transactionID", "", "transactionID info")
 	//先switch 第一个参数
 	switch os.Args[1] {
 	case ListAddressesCmdString:
@@ -98,6 +102,15 @@ func (cli *CLI) Run() {
 		CheckErr("printerr:", err)
 		if printChainCmd.Parsed() {
 			cli.PrintChain()
+		}
+	case FindTXCmdString:
+		err := findTXCmd.Parse(os.Args[2:])
+		CheckErr("parse err:", err)
+		if findTXCmd.Parsed() {
+			if *findTXCmdPara == "" {
+				cli.PrintUsage()
+			}
+			cli.FindTX([]byte(*findTXCmdPara))
 		}
 	default:
 		cli.PrintUsage()

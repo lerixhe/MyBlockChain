@@ -3,10 +3,14 @@ package main
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/gob"
 	"fmt"
+	"math/big"
 	"os"
+	"strings"
 )
 
 const reward float64 = 12.5
@@ -38,10 +42,10 @@ type TXOutput struct {
 	PubKeyHash []byte //公钥哈希，目标收款地址
 }
 
-//检查当前用户能都解开引用的utxo
-func (input *TXInput) CanUnlockUTXOWith(unlockData string) bool {
-	return input.ScriptSig == unlockData
-}
+// //检查当前用户能都解开引用的utxo
+// func (input *TXInput) CanUnlockUTXOWith(unlockData string) bool {
+// 	return input.ScriptSig == unlockData
+// }
 
 //创建锁定脚本,锁定output的公钥hash为指定地址的公钥hash，完成锁定
 //输入：钱包地址，output
@@ -105,7 +109,12 @@ func (tx *Transaction) IsCoinbase() bool {
 func NewTransaction(from, to string, amount float64, bc *BlockChain) *Transaction {
 	ws := NewWallets()
 	wallet := ws.Wallets[from]
+	if wallet == nil {
+		fmt.Printf("address ：%s not exist", from)
+		return nil
+	}
 	pubKey := wallet.PublicKey
+	privateKey := wallet.PrivateKey
 	pubKeyHash := hash160(pubKey)
 
 	vaidUTXOs, total := bc.FindSuitableUTXO(pubKeyHash, amount)
@@ -139,12 +148,108 @@ func NewTransaction(from, to string, amount float64, bc *BlockChain) *Transactio
 		TXInputs:  inputs,
 		TXOutputs: outputs}
 	tx.SetTXID()
-
+	bc.SignTransaction(&tx, privateKey)
 	return &tx
 }
-func (tx *Transaction) Sign(priKey ecdsa.PrivateKey, prevTXs map[string]Transaction) {
+
+//签名函数：实现对某个交易内的所有inputs取得签名
+//输入：交易、私钥、要签名的交易列表
+func (tx *Transaction) Sign(priKey *ecdsa.PrivateKey, prevTXs map[string]Transaction) {
+	//除去coinbase交易
 	if tx.IsCoinbase() {
 		return
 	}
+	//1. 获得修改过得交易副本
+	//2. 遍历交易副本中的inputs,得到上一交易的ID,
+	//3. 根据交易ID和索引号，取得上一交易中的所需要的output，从而得到公钥哈希
+	//4. 把公钥hash传给当前input的公钥字段，得到当前input的签私钥名
+	//5. 遍历完成后，每个input都有了私钥签名数据。
+	txCopy := tx.TrimmedCopy()
+	for i, input := range txCopy.TXInputs {
+		prevTX := prevTXs[string(input.TXID)]
+		if len(prevTX.TXID) == 0 {
+			fmt.Println("invalid transaction")
+		}
+		output := prevTX.TXOutputs[input.Vout]
+		//input.PubKey = output.PubKeyHash 不能这样写，range出的变量与原变量的对应元素，地址不同
+		txCopy.TXInputs[i].PubKey = output.PubKeyHash
+		txCopy.SetTXID()
+		txCopy.TXInputs[i].PubKey = nil
+		//得到签名数据
+		signData := txCopy.TXID
+		r, s, err := ecdsa.Sign(rand.Reader, priKey, signData)
+		CheckErr("sign err:", err)
+		signature := append(r.Bytes(), s.Bytes()...)
+		tx.TXInputs[i].Signature = signature
+	}
 
+}
+
+//创建交易副本，但是所有input的签名和公钥先置空
+func (tx *Transaction) TrimmedCopy() Transaction {
+	var inputs []TXInput
+	var outputs []TXOutput
+	for _, input := range tx.TXInputs {
+		newInput := TXInput{input.TXID, input.Vout, nil, nil}
+		inputs = append(inputs, newInput)
+	}
+	for _, output := range tx.TXOutputs {
+		outputs = append(outputs, output)
+	}
+	return Transaction{tx.TXID, inputs, outputs}
+}
+
+// 定义校验交易过程
+func (tx *Transaction) Verify(preTXs map[string]Transaction) bool {
+	if tx.IsCoinbase() {
+		return true
+	}
+	txCopy := tx.TrimmedCopy()
+	for i, input := range tx.TXInputs {
+		preTX := preTXs[string(input.TXID)]
+		if len(preTX.TXID) == 0 {
+			fmt.Println("invalid transaction in Verify")
+		}
+		txCopy.TXInputs[i].PubKey = preTX.TXOutputs[input.Vout].PubKeyHash
+		txCopy.SetTXID()
+		data := txCopy.TXID
+		//开始准备校验
+		signature := input.Signature
+		r := big.Int{}
+		s := big.Int{}
+		r.SetBytes(signature[:len(signature)/2])
+		s.SetBytes(signature[len(signature)/2:])
+		pubKey := input.PubKey
+		x := big.Int{}
+		y := big.Int{}
+		x.SetBytes(pubKey[:len(pubKey)/2])
+		y.SetBytes(pubKey[len(pubKey)/2:])
+		//构建一个原生publickey
+		publicKeyOrigin := ecdsa.PublicKey{elliptic.P256(), &x, &y}
+		//开始校验
+		isOk := ecdsa.Verify(&publicKeyOrigin, data, &r, &s)
+		if !isOk {
+			return false
+		}
+	}
+	return true
+}
+
+//打印交易
+func (tx *Transaction) String() string {
+	var lines []string
+	lines = append(lines, fmt.Sprintf("--- Transaction %x:", tx.TXID))
+	for i, input := range tx.TXInputs {
+		lines = append(lines, fmt.Sprintf("       Input %d:", i))
+		lines = append(lines, fmt.Sprintf("             TXID:%x", input.TXID))
+		lines = append(lines, fmt.Sprintf("             Out:%d", input.Vout))
+		lines = append(lines, fmt.Sprintf("             Signature:%x", input.Signature))
+		lines = append(lines, fmt.Sprintf("             PubKey:%x", input.PubKey))
+	}
+	for i, output := range tx.TXOutputs {
+		lines = append(lines, fmt.Sprintf("       Output %d:", i))
+		lines = append(lines, fmt.Sprintf("             Value: %f:", output.Value))
+		lines = append(lines, fmt.Sprintf("             Script %x:", output.PubKeyHash))
+	}
+	return strings.Join(lines, "\n")
 }

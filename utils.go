@@ -31,6 +31,7 @@ func CheckAddress(address string) bool {
 	checkCode := temp[len(temp)-4:]
 	temphash := sha256.Sum256(temp[:len(temp)-4])
 	checkSum := sha256.Sum256(temphash[:])
+	//fmt.Println(checkCode, checkSum[:4])
 	return bytes.Equal(checkCode, checkSum[:4])
 }
 
