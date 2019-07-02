@@ -6,6 +6,7 @@ import (
 	"os"
 )
 
+// 定义提示信息
 const usage = `
 	createChain   --address ADDRESS      "create a blockchain"
 	send          --from SOR_ADDRESS --to TAR_ADDRESS --amount AMOUNT      "send coins"
@@ -15,12 +16,27 @@ const usage = `
 	listAddresses "list all walllet addresses"
 	findTX        --transactionID TXID   "find and print a transaction"
 `
+
+// 定义命令
+// 打印区块链
 const PrintChainCmdString = "printChain"
+
+// 创建区块链
 const CreateChainCmdString = "createChain"
+
+// 获取钱包余额
 const GetBalanceCmdString = "getBalance"
+
+// 发送货币
 const SendCmdString = "send"
+
+// 创建钱包
 const NewWalletCmdString = "newWallet"
+
+// 查看钱包地址列表
 const ListAddressesCmdString = "listAddresses"
+
+// 查询交易
 const FindTXCmdString = "findTX"
 
 type CLI struct {
@@ -56,7 +72,7 @@ func (cli *CLI) Run() {
 	createChainCmdPara := createChainCmd.String("address", "", "address info")
 	getBalanceCmdPara := getBalanceCmd.String("address", "", "address info")
 	findTXCmdPara := findTXCmd.String("transactionID", "", "transactionID info")
-	//先switch 第一个参数
+	//先switch 第1个参数
 	switch os.Args[1] {
 	case ListAddressesCmdString:
 		err := listAddressesCmd.Parse(os.Args[2:])
